@@ -5,7 +5,7 @@
 
   Documentation: http://koopjs.github.io/docs/specs/provider/
 */
-const request = require('request').defaults({gzip: true, json: true})
+const request = require('request').defaults({ gzip: true, json: true })
 const config = require('config')
 
 function Model (koop) {}
@@ -13,7 +13,8 @@ function Model (koop) {}
 // This is the only public function you need to implement
 Model.prototype.getData = function (req, callback) {
   // convert gist.github.com|id|6de6fe4ccdea85b8.geojson
-  let url = req.params.id.replace(/\|/g,'/');
+  let url =
+    'https://eric.clst.org/assets/wiki/uploads/Stuff/gz_2010_us_040_00_500k.json'
 
   // Available parameters:
   // req.params.host
@@ -21,19 +22,19 @@ Model.prototype.getData = function (req, callback) {
   // req.params.layer
   // req.params.method
 
-  request(`http://${url}`, (err, res, body) => {
+  request(url, (err, res, body) => {
     if (err) return callback(err)
     // translate the response into geojson
     const geojson = translate(body)
     // Cache data for 10 seconds at a time by setting the ttl or "Time to Live"
     geojson.ttl = 10
 
-
-    if(geojson.metadata === undefined || geojson.metadata === null) {
-      geojson.metadata = {};
+    if (geojson.metadata === undefined || geojson.metadata === null) {
+      geojson.metadata = {}
     }
-    geojson.metadata.title = "Koop GeoJSON"
-    geojson.metadata.description = `Data from ${url}`;
+    geojson.metadata.title = 'Koop GeoJSON'
+    geojson.metadata.description = `Data from ${url}`
+    geojson.metadata.idField = 'STATE'
 
     // hand off the data to Koop
     callback(null, geojson)
@@ -42,42 +43,46 @@ Model.prototype.getData = function (req, callback) {
 
 // GeoJSON to GeoJSON
 function translate (input) {
-
   // GeoJSON can just be the geometry
-  if( input.type === undefined || input.type === null || input.type != "FeatureCollection" ) {
-
-    let geometry = 'Point';
-    switch(input.type) {
+  if (
+    input.type === undefined ||
+    input.type === null ||
+    input.type !== 'FeatureCollection'
+  ) {
+    let geometry = 'Point'
+    switch (input.type) {
       case 'LineString':
-        geometry = 'Polyline';
-        break;
+        geometry = 'Polyline'
+        break
       case 'MultiPolygon':
-        geometry = 'Polygon';
-        break;
+        geometry = 'Polygon'
+        break
       default:
-        geometry = input.type;
+        geometry = input.type
     }
 
     return {
       type: 'FeatureCollection',
-      features: [ formatFeature(input) ],
+      features: [formatFeature(input)],
       metadata: {
         geometryType: geometry
       }
     }
   } else {
-
     // Or it's a feature collection
-    return input;
+    input.features = input.features.map((feature) => {
+      feature.properties['STATE'] = parseInt(feature.properties['STATE'])
+      return feature
+    })
+    return input
   }
 }
 
 function formatFeature (geometry) {
-
   const feature = {
     type: 'Feature',
     properties: {
-      "type": geometry.type
+      type: geometry.type
     },
     geometry: geometry
   }

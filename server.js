@@ -2,6 +2,15 @@
 process.on('SIGINT', () => process.exit(0))
 process.on('SIGTERM', () => process.exit(0))
 
+const express = require('express')
+const cors = require('cors')
+const app = express()
+app.use(cors())
+
+const bodyParser = require('body-parser')
+app.use(bodyParser.json({ limit: '50mb' }))
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }))
+
 // Initialize Koop
 const Koop = require('koop')
 const koop = new Koop()
@@ -10,27 +19,21 @@ const koop = new Koop()
 const provider = require('./')
 koop.register(provider)
 
-if(process.env.DEPLOY == "dev") {
+// Start listening for http traffic
+const config = require('config')
+const port = config.port || 5432
 
-  // Start listening for HTTP traffic
-  const config = require('config')
-  // Set port for configuration or fall back to default
-  const port = config.port || 8080
-  koop.server.listen(port)
+app.use('', koop.server)
 
-  const message = `
-
-  Koop Walmart Provider listening on ${port}
-  For more docs visit: https://koopjs.github.io/docs/specs/provider/
-  To find providers visit: https://www.npmjs.com/search?q=koop+provider
-
-  Try it out in your browser: http://localhost:${port}/geojson/FeatureServer/0/query
-  Or on the command line: curl --silent http://localhost:${port}/geojson/FeatureServer/0/query?returnCountOnly=true
-
-  Press control + c to exit
-  `
-  console.log(message)
-
-} else {
-  module.exports = koop.server
+const fs = require('fs')
+const options = {
+  key: fs.readFileSync('C:\\Users\\jeff9123\\Documents\\playground\\cert.key'),
+  cert: fs.readFileSync('C:\\Users\\jeff9123\\Documents\\playground\\cert.pem')
 }
+
+const https = require('https')
+https.createServer(options, app).listen(port)
+
+// koop.server.listen(port)
+console.log(`Koop GeoJSON listening on ${port}`)
+console.log(`https://localhost:${port}/geojson/test/FeatureServer/0`)
